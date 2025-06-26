@@ -25,21 +25,27 @@ async function loadPdfText() {
 app.post('/groupme-webhook', async (req, res) => {
     const data = req.body;
 
-    if (data.sender_type === 'bot') return res.sendStatus(200); // avoid echo
+    // Ignore messages from the bot itself
+    if (data.sender_type === 'bot') return res.sendStatus(200);
 
-    const userMessage = data.text;
+    const userMessage = data.text?.trim();
+
+    // 👇 Only respond if message starts with "@ref"
+    if (!userMessage.toLowerCase().startsWith("@ref")) {
+        return res.sendStatus(200); // silently ignore
+    }
+
+    // Remove the trigger word so it's not in the prompt
+    const cleanedMessage = userMessage.replace(/^@ref\s*/i, '');
 
     try {
         const gptResponse = await openai.chat.completions.create({
             model: 'gpt-4o',
             messages: [
-                {
-                    role: 'system',
-                    content: systemPrompt,
-                },
+                { role: 'system', content: systemPrompt },
                 {
                     role: 'user',
-                    content: `Here is the rulebook:\n\n${pdfText}\n\nQuestion: ${userMessage}`
+                    content: `Here is the rulebook:\n\n${pdfText}\n\nQuestion: ${cleanedMessage}`
                 }
             ]
         });
